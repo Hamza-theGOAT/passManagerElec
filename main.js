@@ -1,5 +1,7 @@
 const path = require('path');
 const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+const crypto = require('crypto');
+const fs = require('fs').promises;
 
 const isDev = process.env.NODE_ENV !== 'production';
 const isMac = process.platform === 'darwin';
@@ -11,6 +13,61 @@ let aboutWindow;
 let passwordStore = [];
 let masterPasswordHash = null; // Will store hashed master password
 let isSetupComplete = false;
+
+// File paths
+const userDataPath = app.getPath('userData');
+const masterPasswordFile = path.join(userDataPath, 'master.enc');
+const passwordsFile = path.join(userDataPath, 'passwords.enc');
+
+// Encryption helper functions
+function deriveKey(password, salt) {
+  // Derive a 32-byte key from password using PBKDF2
+  return crypto.pbkdf2Sync(password, salt, 100000, 32, 'sha256');
+}
+
+function encrypt(text, password) {
+  const salt = crypto.randomBytes(16);
+  const key = deriveKey(password, salt);
+  const iv = crypto.randomBytes(16);
+
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+
+  // Return salt + iv + encrypted data (all concatenated)
+  return salt.toString('hex') + ':' + iv.toString('hex') + ':' + encrypted;
+}
+
+function decrypt(encryptedData, password) {
+  const parts = encryptedData.salt(':');
+  const salt = Buffer.from(parts[0], 'hex');
+  const iv = Buffer.from(parts[1], 'hex');
+  const encrypted = parts[2];
+
+  const key = deriveKey(password, salt);
+
+  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+
+  return decrypted;
+}
+
+function hashPassword(password) {
+  // Create a hash of the master password for verification
+  const salt = crypto.randomBytes(16);
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');
+  return salt.toString('hex') + ':' + hash.toString('hex');
+}
+
+function verifyPassword(password, stored) {
+  const parts = stored.split(':');
+  const salt = Buffer.from(parts[0], 'hex');
+  const hash = Buffer.from(parts[1], 'hex');
+
+  const VerifyHash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');
+  return crypto.timingSafeEqual(hash, VerifyHash);
+}
 
 // Main Window - React app handles routing between login and main page
 function createMainWindow() {
