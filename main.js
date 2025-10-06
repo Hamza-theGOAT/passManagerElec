@@ -113,14 +113,18 @@ const menu = [
 ipcMain.on('auth:login', (e, masterPassword) => {
   // TODO: Verify master password against stored hash
   console.log('Login attempt');
+  console.log('Stored master password:', masterPasswordHash);
+  console.log('Entered password:', masterPassword);
+  console.log('isSetupComplete:', isSetupComplete);
   
   // Simulate verification (replace with actual verification)
-  const isValid = true; // Replace with: verifyMasterPassword(masterPassword)
+  const isValid = masterPasswordHash === masterPassword; // Replace with: verifyMasterPassword(masterPassword)
   
   if (isValid) {
     // Send success - React will handle navigation
     mainWindow.webContents.send('auth:login-success');
   } else {
+    console.log('Login failed - passwords do not match');
     mainWindow.webContents.send('auth:login-error', 'Invalid master password');
   }
 });
@@ -129,6 +133,13 @@ ipcMain.on('auth:login', (e, masterPassword) => {
 ipcMain.on('auth:setup', (e, masterPassword) => {
   // TODO: Hash and store master password
   console.log('Setup master password');
+
+  masterPasswordHash = masterPassword;
+  isSetupComplete = true;
+  
+  console.log('Setup complete');
+  console.log('Stored master password:', masterPasswordHash);
+  console.log('isSetupComplete:', isSetupComplete);
   
   // Simulate setup
   mainWindow.webContents.send('auth:setup-success');
@@ -137,14 +148,15 @@ ipcMain.on('auth:setup', (e, masterPassword) => {
 // Check if master password exists (first run check)
 ipcMain.on('auth:check-setup', (e) => {
   // TODO: Check if master password is already set
-  const isSetup = false; // Replace with actual check
+  // const isSetup = false; // Replace with actual check
   
-  console.log('Check setup called, isSetup:', isSetup);
-  mainWindow.webContents.send('auth:setup-status', { isSetup });
+  console.log('Check setup called, isSetup:', isSetupComplete);
+  mainWindow.webContents.send('auth:setup-status', { isSetup: isSetupComplete });
 });
 
 // Handle logout
 ipcMain.on('auth:logout', () => {
+  console.log('Logout called');
   // Clear any in-memory data
   // React will handle navigation back to login
   mainWindow.webContents.send('auth:logout-success');
@@ -205,8 +217,16 @@ ipcMain.on('password:reveal', (e, passwordId) => {
   console.log('Reveal password:', passwordId);
   
   // Simulate decryption
-  const actualPassword = 'MySecurePassword123!';
-  mainWindow.webContents.send('password:revealed', { id: passwordId, password: actualPassword });
+  const password = passwordStore.find(p => p.id === passwordId);
+  if (password) {
+    console.log('Password revealed');
+    mainWindow.webContents.send('password:revealed', {
+      id: passwordId,
+      password: password.password
+    });
+  } else {
+    console.log('Password not found');
+  }
 });
 
 // Quit when all windows are closed
