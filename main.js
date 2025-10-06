@@ -1,6 +1,8 @@
 const path = require('path');
 const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const crypto = require('crypto');
+const { error } = require('console');
+const { json } = require('stream/consumers');
 const fs = require('fs').promises;
 
 const isDev = process.env.NODE_ENV !== 'production';
@@ -67,6 +69,44 @@ function verifyPassword(password, stored) {
 
   const VerifyHash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512');
   return crypto.timingSafeEqual(hash, VerifyHash);
+}
+
+// File operations
+async function loadMasterPassword() {
+  try {
+    const data = await fs.readFile(masterPasswordFile, 'utf8');
+    return data;
+  } catch {
+    if (error.code === 'ENOENT') {
+      // File doesn't exist - first time setup
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function saveMasterPassword(hashedPassword) {
+  await fs.writeFile(masterPasswordFile, hashedPassword, 'utf8');
+}
+
+async function loadPasswords(masterPassword) {
+  try {
+    const encryptedData = await fs.readFile(passwordsFile, 'utf8');
+    const decryptedData = decrypt(encryptedData, masterPassword);
+    return JSON.parse(decryptedData);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      // File doesn't exist - no passwords yet
+      return [];
+    }
+    throw error;
+  }
+}
+
+async function savePasswords(passwords, masterPassword) {
+  const jsonData = JSON.stringify(passwords);
+  const encryptedData = encrypt(jsonData, masterPassword);
+  await fs.writeFile(passwordsFile, encryptedData, 'utf8');
 }
 
 // Main Window - React app handles routing between login and main page
