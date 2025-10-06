@@ -1,0 +1,4 @@
+node_modules
+renderer/assets
+package-lock.json
+readme.md
