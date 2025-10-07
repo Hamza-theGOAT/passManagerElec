@@ -108,6 +108,7 @@ function Dashboard({ onLogout }) {
   const [passwords, setPasswords] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingPassword, setEditingPassword] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     // Load passwords on mount
@@ -151,10 +152,28 @@ function Dashboard({ onLogout }) {
     onLogout();
   };
 
+  // Filter passwords based on search query
+  const filteredPasswords = passwords.filter((password) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      password.title.toLowerCase().includes(query) ||
+      password.username.toLowerCase().includes(query)
+    );
+  });
+
   return (
     <div className="dashboard">
       <header className="dashboard-header">
         <h1>🔐 My Passwords</h1>
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="🔍 Search passwords..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+          />
+        </div>
         <div className="header-actions">
           <button className="btn-primary" onClick={() => setShowAddForm(true)}>
             + Add Password
@@ -181,8 +200,13 @@ function Dashboard({ onLogout }) {
             <p>No passwords saved yet.</p>
             <p>Click "Add Password" to get started!</p>
           </div>
+        ) : filteredPasswords.length === 0 ? (
+          <div className="empty-state">
+            <p>No Passwords match your search.</p>
+            <p>Try a different keyword.</p>
+          </div>
         ) : (
-          passwords.map((password) => (
+          filteredPasswords.map((password) => (
             <PasswordItem
               key={password.id}
               password={password}
