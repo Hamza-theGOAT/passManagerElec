@@ -3,6 +3,7 @@ const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const crypto = require('crypto');
 const { error } = require('console');
 const { json } = require('stream/consumers');
+const { type } = require('os');
 const fs = require('fs').promises;
 
 const isDev = process.env.NODE_ENV !== 'production';
@@ -187,7 +188,17 @@ const menu = [
       ]
     : []),
   {
-    role: 'fileMenu',
+    label: 'File',
+    submenu: [
+      {
+        label: 'Change Master Password',
+        click: () => {
+          mainWindow.webContents.send('show-change-password');
+        }
+      },
+      { type: 'separator' },
+      { role: 'quit' }
+    ]
   },
   ...(!isMac
     ? [
@@ -285,6 +296,47 @@ ipcMain.on('auth:check-setup', (e) => {
   console.log('Check setup called, isSetup:', isSetupComplete);
   mainWindow.webContents.send('auth:setup-status', { isSetup: isSetupComplete });
 });
+
+// Handle master password change
+ipcMain.on('auth:change-password', async (e, { oldPassword, newPassword }) => {
+  console.log('Change master password request');
+
+  try {
+    // Verify old password
+    const isValid = verifyPassword(oldPassword, masterPasswordHash);
+
+    if (!isValid) {
+      console.log('Old password incorrect');
+      mainWindow.webContents.send('auth:change-password-error', 'Current password is incorrect');
+      return;
+    }
+
+    console.log('Old password verified - changing to new password');
+
+    // Hash new password
+    const newHashedPassword = hashPassword(newPassword);
+
+    // Re-encrypt all passwords with new master password
+    const currentPasswords = passwordStore;
+
+    // Save new master password hash
+    await saveMasterPassword(newHashedPassword);
+
+    // Re-encrypt passwords with new master password
+    await savePasswords(currentPasswords, newPassword);
+
+    // Update in-memory values
+    masterPasswordHash = newHashedPassword;
+    currentMasterPassword = newPassword;
+
+    console.log('Master password changed successfully');
+    mainWindow.webContents.send('auth:change-password-success');
+
+  } catch (error) {
+    console.error('Change password error:', error);
+    mainWindow.webContents.send('auth:change-password-error', 'Failed to change password');
+  }
+})
 
 // Handle logout
 ipcMain.on('auth:logout', () => {

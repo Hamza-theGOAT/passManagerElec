@@ -109,6 +109,7 @@ function Dashboard({ onLogout }) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingPassword, setEditingPassword] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
     // Load passwords on mount
@@ -138,12 +139,17 @@ function Dashboard({ onLogout }) {
       }
     });
 
+    window.api.onShowChangePassword(() => {
+      setShowChangePassword(true);
+    });
+
     // Cleanup
     return () => {
       window.api.removeListener("password:list");
       window.api.removeListener("password:added");
       window.api.removeListener("password:updated");
       window.api.removeListener("password:deleted");
+      window.api.removeListener("show-change-password");
     };
   }, []);
 
@@ -191,6 +197,12 @@ function Dashboard({ onLogout }) {
             setShowAddForm(false);
             setEditingPassword(null);
           }}
+        />
+      )}
+
+      {showChangePassword && (
+        <ChangeMasterPasswordModal
+          onClose={() => setShowChangePassword(false)}
         />
       )}
 
@@ -383,6 +395,141 @@ function PasswordItem({ password, onEdit, onDelete }) {
           <strong>Password:</strong> {revealedPassword}
         </div>
       )}
+    </div>
+  );
+}
+
+// Change Master Password Component
+function ChangeMasterPasswordModal({ onClose }) {
+  const [formData, setFormData] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    window.api.onChangePasswordSuccess(() => {
+      setSuccess(true);
+      setError("");
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    });
+
+    window.api.onChangePasswordError((errorMsg) => {
+      setError(errorMsg);
+    });
+
+    return () => {
+      window.api.removeListener("auth:change-password-success");
+      window.api.removeListener("auth:change-password-error");
+    };
+  }, [onClose]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError("");
+
+    // Validation
+    if (!formData.oldPassword) {
+      setError("Please enter your current password");
+      return;
+    }
+
+    if (!formData.newPassword) {
+      setError("Please enter a new password");
+      return;
+    }
+
+    if (formData.newPassword.length < 6) {
+      setError("New password must be at least 6 characters");
+      return;
+    }
+
+    if (formData.newPassword === formData.oldPassword) {
+      setError("New password must be different from current password");
+      return;
+    }
+
+    if (formData.newPassword !== formData.confirmPassword) {
+      setError("New passwords do not match");
+      return;
+    }
+
+    // Send change request
+    window.api.changePassword(formData.oldPassword, formData.newPassword);
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h2>Change Master Password</h2>
+
+        {success ? (
+          <div className="success-message">
+            ✓ Master password changed successfully!
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label>Current Password</label>
+              <input
+                type="password"
+                name="oldPassword"
+                value={formData.oldPassword}
+                onChange={handleChange}
+                placeholder="Enter current password"
+                autoFocus
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>New Password</label>
+              <input
+                type="password"
+                name="newPassword"
+                value={formData.newPassword}
+                onChange={handleChange}
+                placeholder="Enter new password"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Confirm New Password</label>
+              <input
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm new password"
+                required
+              />
+            </div>
+
+            {error && <div className="error-message">{error}</div>}
+
+            <div className="form-actions">
+              <button type="button" className="btn-secondary" onClick={onClose}>
+                Cancel
+              </button>
+              <button type="submit" className="btn-primary">
+                Update Password
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

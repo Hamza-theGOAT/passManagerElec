@@ -144,6 +144,17 @@ body {
   transform: scale(1.1);
 }
 
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  border-left: 4px solid #28a745;
+  text-align: center;
+}
+
 /* Error and Info Messages */
 .error-message {
   background: #fee;

@@ -8,12 +8,16 @@ contextBridge.exposeInMainWorld('api', {
   setupMasterPassword: (masterPassword) => ipcRenderer.send('auth:setup', masterPassword),
   checkSetup: () => ipcRenderer.send('auth:check-setup'),
   logout: () => ipcRenderer.send('auth:logout'),
+  changePassword: (oldPassword, newPassword) => ipcRenderer.send('auth:change-password', { oldPassword, newPassword }),
   
   onLoginSuccess: (callback) => ipcRenderer.on('auth:login-success', callback),
   onLoginError: (callback) => ipcRenderer.on('auth:login-error', (event, error) => callback(error)),
   onSetupSuccess: (callback) => ipcRenderer.on('auth:setup-success', callback),
   onSetupStatus: (callback) => ipcRenderer.on('auth:setup-status', (event, data) => callback(data)),
   onLogoutSuccess: (callback) => ipcRenderer.on('auth:logout-success', callback),
+  onChangePasswordSuccess: (callback) => ipcRenderer.on('auth:change-password-success', callback),
+  onChangePasswordError: (callback) => ipcRenderer.on('auth:change-password-error', (event, error) => callback(error)),
+  onShowChangePassword: (callback) => ipcRenderer.on('show-change-password', callback),
   
   // Password CRUD operations
   addPassword: (passwordData) => ipcRenderer.send('password:add', passwordData),
