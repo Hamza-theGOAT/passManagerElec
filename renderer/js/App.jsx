@@ -107,6 +107,7 @@ function Login({ onLoginSuccess }) {
 function Dashboard({ onLogout }) {
   const [passwords, setPasswords] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingPassword, setEditingPassword] = useState(null);
 
   useEffect(() => {
     // Load passwords on mount
@@ -123,6 +124,13 @@ function Dashboard({ onLogout }) {
       }
     });
 
+    window.api.onPasswordUpdated((data) => {
+      if (data.success) {
+        window.api.getAllPasswords();
+        setEditingPassword(null);
+      }
+    });
+
     window.api.onPasswordDeleted((data) => {
       if (data.success) {
         window.api.getAllPasswords();
@@ -133,6 +141,7 @@ function Dashboard({ onLogout }) {
     return () => {
       window.api.removeListener("password:list");
       window.api.removeListener("password:added");
+      window.api.removeListener("password:updated");
       window.api.removeListener("password:deleted");
     };
   }, []);
@@ -156,7 +165,15 @@ function Dashboard({ onLogout }) {
         </div>
       </header>
 
-      {showAddForm && <AddPasswordForm onClose={() => setShowAddForm(false)} />}
+      {(showAddForm || editingPassword) && (
+        <PasswordForm
+          password={editingPassword}
+          onClose={() => {
+            setShowAddForm(false);
+            setEditingPassword(null);
+          }}
+        />
+      )}
 
       <div className="passwords-list">
         {passwords.length === 0 ? (
@@ -169,6 +186,7 @@ function Dashboard({ onLogout }) {
             <PasswordItem
               key={password.id}
               password={password}
+              onEdit={(pwd) => setEditingPassword(pwd)}
               onDelete={(id) => window.api.deletePassword(id)}
             />
           ))
@@ -179,17 +197,28 @@ function Dashboard({ onLogout }) {
 }
 
 // Add Password Form Component
-function AddPasswordForm({ onClose }) {
+function PasswordForm({ password, onClose }) {
   const [formData, setFormData] = useState({
-    title: "",
-    username: "",
-    password: "",
-    url: "",
+    title: password?.title || "",
+    username: password?.username || "",
+    password: password?.password || "",
+    url: password?.url || "",
   });
+
+  const isEditing = !!password;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    window.api.addPassword(formData);
+
+    if (isEditing) {
+      // Update existing password
+      console.log("Updating password:", formData);
+      window.api.updatePassword({ ...formData, id: password.id });
+    } else {
+      // Add new password
+      console.log("Adding password:", formData);
+      window.api.addPassword(formData);
+    }
   };
 
   const handleChange = (e) => {
@@ -202,7 +231,7 @@ function AddPasswordForm({ onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2>Add New Password</h2>
+        <h2>{isEditing ? "Edit Password" : "Add New Password"}</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Title</label>
@@ -256,7 +285,7 @@ function AddPasswordForm({ onClose }) {
               Cancel
             </button>
             <button type="submit" className="btn-primary">
-              Save
+              {isEditing ? "Update" : "Save"}
             </button>
           </div>
         </form>
@@ -266,7 +295,7 @@ function AddPasswordForm({ onClose }) {
 }
 
 // Password Item Component
-function PasswordItem({ password, onDelete }) {
+function PasswordItem({ password, onEdit, onDelete }) {
   const [showPassword, setShowPassword] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState("");
 
@@ -308,6 +337,13 @@ function PasswordItem({ password, onDelete }) {
           title="Show password"
         >
           {showPassword ? "🙈" : "👁️"}
+        </button>
+        <button
+          className="btn-icon"
+          onClick={() => onEdit(password)}
+          title="Edit"
+        >
+          ✏️
         </button>
         <button
           className="btn-icon"
