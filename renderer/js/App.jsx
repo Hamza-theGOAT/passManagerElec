@@ -125,7 +125,7 @@ function Dashboard({ onLogout }) {
 
     window.api.onPasswordDeleted((data) => {
       if (data.success) {
-        setPasswords(passwords.filter((p) => p.id !== data.id));
+        window.api.getAllPasswords();
       }
     });
 

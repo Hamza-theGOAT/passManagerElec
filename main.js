@@ -15,6 +15,7 @@ let aboutWindow;
 let passwordStore = [];
 let masterPasswordHash = null; // Will store hashed master password
 let isSetupComplete = false;
+let currentMasterPassword = null;
 
 // File paths
 const userDataPath = app.getPath('userData');
@@ -41,7 +42,7 @@ function encrypt(text, password) {
 }
 
 function decrypt(encryptedData, password) {
-  const parts = encryptedData.salt(':');
+  const parts = encryptedData.split(':');
   const salt = Buffer.from(parts[0], 'hex');
   const iv = Buffer.from(parts[1], 'hex');
   const encrypted = parts[2];
@@ -149,10 +150,22 @@ function createAboutWindow() {
 }
 
 // When the app is ready, create the window
-app.on('ready', () => {
+app.on('ready', async () => {
   createMainWindow();
 
-  // TODO: Check if encrypted file exists
+  // Check if master password file exists
+  try {
+    const storedHash = await loadMasterPassword();
+    if (storedHash) {
+      isSetupComplete = true;
+      masterPasswordHash = storedHash;
+      console.log('Master password file found - setup complete');
+    } else {
+      console.log('No Master password file - first time setup');
+    }
+  } catch (error) {
+    console.error('Error loading master password:', error);
+  }
 
   const mainMenu = Menu.buildFromTemplate(menu);
   Menu.setApplicationMenu(mainMenu);
@@ -207,39 +220,61 @@ const menu = [
 // IPC Handlers for password manager functionality
 
 // Handle login verification
-ipcMain.on('auth:login', (e, masterPassword) => {
-  // TODO: Verify master password against stored hash
+ipcMain.on('auth:login', async (e, masterPassword) => {
   console.log('Login attempt');
-  console.log('Stored master password:', masterPasswordHash);
-  console.log('Entered password:', masterPassword);
-  console.log('isSetupComplete:', isSetupComplete);
   
-  // Simulate verification (replace with actual verification)
-  const isValid = masterPasswordHash === masterPassword; // Replace with: verifyMasterPassword(masterPassword)
-  
-  if (isValid) {
-    // Send success - React will handle navigation
-    mainWindow.webContents.send('auth:login-success');
-  } else {
-    console.log('Login failed - passwords do not match');
-    mainWindow.webContents.send('auth:login-error', 'Invalid master password');
+  try {
+    // Verify password against stored hash
+    const isValid = verifyPassword(masterPassword, masterPasswordHash);
+    
+    if (isValid) {
+      console.log('Password verified - loading passwords');
+
+      currentMasterPassword = masterPassword;
+      
+      // Load encrypted passwords
+      passwordStore = await loadPasswords(masterPassword);
+      console.log('Loaded passwords:', passwordStore.length);
+      
+      mainWindow.webContents.send('auth:login-success');
+    } else {
+      console.log('Login failed - invalid password');
+      mainWindow.webContents.send('auth:login-error', 'Invalid master password');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    mainWindow.webContents.send('auth:login-error', 'Failed to decrypt vault');
   }
 });
 
 // Handle initial setup (first time creating master password)
-ipcMain.on('auth:setup', (e, masterPassword) => {
-  // TODO: Hash and store master password
+ipcMain.on('auth:setup', async (e, masterPassword) => {
+  // Hash and store master password
   console.log('Setup master password');
 
-  masterPasswordHash = masterPassword;
-  isSetupComplete = true;
-  
-  console.log('Setup complete');
-  console.log('Stored master password:', masterPasswordHash);
-  console.log('isSetupComplete:', isSetupComplete);
-  
-  // Simulate setup
-  mainWindow.webContents.send('auth:setup-success');
+  try {
+    // Hash the master password
+    const hashedPassword = hashPassword(masterPassword);
+
+    currentMasterPassword = masterPassword;
+
+    // Save to file
+    await saveMasterPassword(hashedPassword);
+
+    // Update state
+    masterPasswordHash = hashedPassword;
+    isSetupComplete = true;
+
+    // Initialize empty password store
+    passwordStore = [];
+    await savePasswords(passwordStore, masterPassword);
+
+    console.log('Setup complete - files created');
+    mainWindow.webContents.send('auth:setup-success');
+  } catch (error) {
+    console.error('Setup error:', error);
+    mainWindow.webContents.send('auth:login-error', 'Failed to create vault');
+  }
 });
 
 // Check if master password exists (first run check)
@@ -260,23 +295,30 @@ ipcMain.on('auth:logout', () => {
 });
 
 // Handle password operations (CRUD)
-ipcMain.on('password:add', (e, passwordData) => {
-  // TODO: Encrypt and store password
+ipcMain.on('password:add', async (e, passwordData) => {
+  // Encrypt and store password
   console.log('Add password:', passwordData);
-  
-  // Simulate success
-  const newPassword = {
-    id: Date.now(),
-    ...passwordData,
-    createdAt: new Date().toISOString()
-  };
 
-  passwordStore.push(newPassword);
-  
-  console.log('Password added successfully. Total passwords:', passwordStore.length);
-  console.log('Full passwordStore:', JSON.stringify(passwordStore, null, 2));
+  try {
+    const newPassword = {
+      id: Date.now(),
+      ...passwordData,
+      createdAt: new Date().toISOString()
+    };
 
-  mainWindow.webContents.send('password:added', { success: true, password: newPassword });
+    passwordStore.push(newPassword);
+
+    
+    // TODO: Save to encrypted file (need master password)
+    // Save to encrypted file
+    await savePasswords(passwordStore, currentMasterPassword);
+    console.log('Password added successfully. Total passwords:', passwordStore.length);
+
+    mainWindow.webContents.send('password:added', { success: true, password: newPassword });
+  } catch (error) {
+    console.error('Add password error:', error);
+    mainWindow.webContents.send('password:added', { success: false });
+  }
 });
 
 ipcMain.on('password:get-all', (e) => {
@@ -294,18 +336,57 @@ ipcMain.on('password:get-all', (e) => {
   mainWindow.webContents.send('password:list', maskedPasswords);
 });
 
-ipcMain.on('password:update', (e, passwordData) => {
-  // TODO: Update encrypted password
+ipcMain.on('password:update', async (e, passwordData) => {
+  // Update encrypted password
   console.log('Update password:', passwordData);
   
-  mainWindow.webContents.send('password:updated', { success: true, password: passwordData });
+  try {
+    const index = passwordStore.findIndex(p => p.id === passwordData.id);
+    
+    if (index !== -1) {
+      // Update the password entry
+      passwordStore[index] = { ...passwordStore[index], ...passwordData };
+      
+      // Save to encrypted file
+      await savePasswords(passwordStore, currentMasterPassword);
+      
+      console.log('Password updated successfully');
+      mainWindow.webContents.send('password:updated', { success: true, password: passwordStore[index] });
+    } else {
+      console.log('Password not found');
+      mainWindow.webContents.send('password:updated', { success: false });
+    }
+  } catch (error) {
+    console.error('Update password error:', error);
+    mainWindow.webContents.send('password:updated', { success: false });
+  }
 });
 
-ipcMain.on('password:delete', (e, passwordId) => {
-  // TODO: Delete password entry
+ipcMain.on('password:delete', async (e, passwordId) => {
+  // Delete password entry
   console.log('Delete password:', passwordId);
-  
-  mainWindow.webContents.send('password:deleted', { success: true, id: passwordId });
+
+  try {
+    // Find the index of the password to delete
+    const index = passwordStore.findIndex(p => p.id === passwordId);
+
+    if (index !== -1) {
+      // Remove from array
+      passwordStore.splice(index, 1);
+
+      // Save updated list to encrypted file
+      await savePasswords(passwordStore, currentMasterPassword);
+
+      console.log('Password deleted. Remaining passwords:', passwordStore.length);
+      mainWindow.webContents.send('password:deleted', { success: true, id: passwordId });
+    } else {
+      console.log('Password not found');
+      mainWindow.webContents.send('password:deleted', { success: false });
+    }
+  } catch (error) {
+    console.error('Delete password error:', error);
+    mainWindow.webContents.send('password:deleted', { success: false });
+  }
 });
 
 // Handle password visibility toggle (decrypt for viewing)
