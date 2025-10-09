@@ -396,8 +396,15 @@ ipcMain.on('password:update', async (e, passwordData) => {
     const index = passwordStore.findIndex(p => p.id === passwordData.id);
     
     if (index !== -1) {
+      // Don't update the password if it's masked (unchanged)
+      const updatedData = { ...passwordData };
+      if (passwordData.password === '••••••••') {
+        // Keep the original password
+        updatedData.password = passwordStore[index].password;
+      }
+
       // Update the password entry
-      passwordStore[index] = { ...passwordStore[index], ...passwordData };
+      passwordStore[index] = { ...passwordStore[index], ...updatedData };
       
       // Save to encrypted file
       await savePasswords(passwordStore, currentMasterPassword);
@@ -449,11 +456,15 @@ ipcMain.on('password:reveal', (e, passwordId) => {
   // Simulate decryption
   const password = passwordStore.find(p => p.id === passwordId);
   if (password) {
-    console.log('Password revealed');
+    console.log('Password found:', password.title);
+    console.log('Actual password value:', password.password);
+
     mainWindow.webContents.send('password:revealed', {
       id: passwordId,
       password: password.password
     });
+    
+    console.log('Sent password:revealed event with:', password.password);
   } else {
     console.log('Password not found');
   }

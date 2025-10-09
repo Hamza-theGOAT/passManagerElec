@@ -237,9 +237,30 @@ function PasswordForm({ password, onClose }) {
   const [formData, setFormData] = useState({
     title: password?.title || "",
     username: password?.username || "",
-    password: password?.password || "",
+    password: "",
     url: password?.url || "",
   });
+
+  const [isLoadingPassword, setIsLoadingPassword] = useState(!!password);
+
+  useEffect(() => {
+    if (password) {
+      // Fetch the real password when editing
+      window.api.revealPassword(password.id);
+
+      const handlePasswordRevealed = (data) => {
+        if (data.id === password.id) {
+          setFormData((prev) => ({
+            ...prev,
+            password: data.password,
+          }));
+          setIsLoadingPassword(false);
+        }
+      };
+
+      window.api.onPasswordRevealed(handlePasswordRevealed);
+    }
+  }, [password]);
 
   const isEditing = !!password;
 
@@ -335,17 +356,29 @@ function PasswordItem({ password, onEdit, onDelete }) {
   const [showPassword, setShowPassword] = useState(false);
   const [revealedPassword, setRevealedPassword] = useState("");
 
+  useEffect(() => {
+    const handlePasswordRevealed = (data) => {
+      console.log("Received password:revealed event:", data);
+      if (data.id === password.id) {
+        console.log("Setting revealed password:", data.password);
+        setRevealedPassword(data.password);
+        setShowPassword(true);
+      }
+    };
+
+    window.api.onPasswordRevealed(handlePasswordRevealed);
+
+    return () => {
+      window.api.removeListener("password:revealed");
+    };
+  }, [password.id]);
+
   const handleReveal = () => {
     if (!showPassword) {
       window.api.revealPassword(password.id);
-      window.api.onPasswordRevealed((data) => {
-        if (data.id === password.id) {
-          setRevealedPassword(data.password);
-          setShowPassword(true);
-        }
-      });
     } else {
       setShowPassword(false);
+      setRevealedPassword("");
     }
   };
 
@@ -363,6 +396,11 @@ function PasswordItem({ password, onEdit, onDelete }) {
           >
             {password.url}
           </a>
+        )}
+        {showPassword && (
+          <div className="revealed-password">
+            <strong>Password:</strong> {revealedPassword}
+          </div>
         )}
       </div>
 
@@ -389,12 +427,6 @@ function PasswordItem({ password, onEdit, onDelete }) {
           🗑️
         </button>
       </div>
-
-      {showPassword && (
-        <div className="revealed-password">
-          <strong>Password:</strong> {revealedPassword}
-        </div>
-      )}
     </div>
   );
 }
