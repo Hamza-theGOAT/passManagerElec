@@ -113,6 +113,7 @@ function Dashboard({ onLogout }) {
   const [showExportWarning, setShowExportWarning] = useState(false);
   const [showExportSuccess, setShowExportSuccess] = useState(false);
   const [exportData, setExportData] = useState(null);
+  const [showDeleteAllWarning, setShowDeleteAllWarning] = useState(false);
 
   useEffect(() => {
     // Load passwords on mount
@@ -164,6 +165,24 @@ function Dashboard({ onLogout }) {
       setShowExportWarning(false);
     });
 
+    // Listen for delete all password request from menu
+    window.api.onDeleteAllPasswords(() => {
+      setShowDeleteAllWarning(true);
+    });
+
+    // Listen for delete all success
+    window.api.onDeleteAllSuccess(() => {
+      window.api.getAllPasswords();
+      setShowDeleteAllWarning(false);
+      alert("All passwords have been deleted successfully");
+    });
+
+    // Listen for delete all error
+    window.api.onDeleteAllError((errorMsg) => {
+      alert("Delete failed: " + errorMsg);
+      setShowDeleteAllWarning(false);
+    });
+
     // Cleanup
     return () => {
       window.api.removeListener("password:list");
@@ -174,6 +193,9 @@ function Dashboard({ onLogout }) {
       window.api.removeListener("export-passwords");
       window.api.removeListener("password:export-success");
       window.api.removeListener("password:export-error");
+      window.api.removeListener("delete-all-passwords");
+      window.api.removeListener("password:delete-all-success");
+      window.api.removeListener("password:delete-all-error");
     };
   }, []);
 
@@ -247,6 +269,15 @@ function Dashboard({ onLogout }) {
           }}
           exportPath={exportData.path}
           count={exportData.count}
+        />
+      )}
+
+      {showDeleteAllWarning && (
+        <DeleteAllPasswordsModal
+          onClose={() => setShowDeleteAllWarning(false)}
+          onConfirm={() => {
+            window.api.deleteAllPasswords();
+          }}
         />
       )}
 
@@ -680,6 +711,72 @@ function ExportSuccessModal({ onClose, exportPath, count }) {
         <div className="form-actions">
           <button type="button" className="btn-primary" onClick={onClose}>
             OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Delete All Passwords Modal
+function DeleteAllPasswordsModal({ onClose, onConfirm }) {
+  const [confirmText, setConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirm = () => {
+    if (confirmText === "DELETE ALL") {
+      setIsDeleting(true);
+      onConfirm();
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h2>Delete All Passwords</h2>
+
+        <div className="danger-box">
+          <strong>🚨 DANGER ZONE</strong>
+          <p>
+            This will <strong>permanently delete ALL passwords</strong> from
+            your vault.
+          </p>
+          <p>
+            <strong>This action CANNOT be undone!</strong>
+          </p>
+          <p>Consider exporting your passwords first as a backup.</p>
+        </div>
+
+        <div className="form-group" style={{ marginTop: "1.5rem" }}>
+          <label>
+            Type <strong>DELETE ALL</strong> to confirm:
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="DELETE ALL"
+            autoFocus
+            disabled={isDeleting}
+          />
+        </div>
+
+        <div className="form-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={isDeleting}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn-danger"
+            onClick={handleConfirm}
+            disabled={confirmText !== "DELETE ALL" || isDeleting}
+          >
+            {isDeleting ? "Deleting..." : "Delete All Passwords"}
           </button>
         </div>
       </div>
