@@ -328,15 +328,52 @@ body {
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
   border-radius: 6px;
   border-left: 3px solid #667eea;
-  font-family: 'Courier New', monospace;
-  word-break: break-all;
-  font-size: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.revealed-password-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  overflow: hidden;
 }
 
 .revealed-password strong {
   color: #667eea;
-  margin-right: 0.5rem;
   font-weight: 700;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  white-space: nowrap;
+}
+
+.password-text {
+  font-family: 'Courier New', monospace;
+  word-break: break-all;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.btn-copy {
+  /* background: white; */
+  border: 0px solid #667eea;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+/* .btn-copy:hover {
+  background: #7286e0;
+  transform: scale(1.05);
+} */
+
+.btn-copy:active {
+  transform: scale(0.95);
 }
 
 /* Modal */
