@@ -1,9 +1,10 @@
 const path = require('path');
 const { app, BrowserWindow, Menu, ipcMain } = require('electron');
 const crypto = require('crypto');
-const { error } = require('console');
+const { error, count } = require('console');
 const { json } = require('stream/consumers');
 const { type } = require('os');
+const { execPath } = require('process');
 const fs = require('fs').promises;
 
 const isDev = process.env.NODE_ENV !== 'production';
@@ -197,6 +198,13 @@ const menu = [
         }
       },
       { type: 'separator' },
+      {
+        label: 'Export Passwords',
+        onclick: () => {
+          mainWindow.webContents.send('export-passwords');
+        }
+      },
+      { type: 'separator' },
       { role: 'quit' }
     ]
   },
@@ -335,6 +343,36 @@ ipcMain.on('auth:change-password', async (e, { oldPassword, newPassword }) => {
   } catch (error) {
     console.error('Change password error:', error);
     mainWindow.webContents.send('auth:change-password-error', 'Failed to change password');
+  }
+})
+
+// Handle password export
+ipcMain.on('password:export', async (e) => {
+  console.log('Export passwords request');
+
+  try {
+    const exportsDir = path.join(__dirname, 'assets', 'exports');
+    // TODO: Create exports directory if it doesn't exist
+
+    const exportPath = path.join(exportsDir, 'passKeys.json');
+
+    // Export all passwords (unencrypted - WARN USER!)
+    const exportData = {
+      exportDate: new Date().toISOString(),
+      passwordCount: passwordStore.length,
+      passwords: passwordStore
+    };
+
+    await fs.writeFile(exportPath, JSON.stringify(exportData, null, 2), 'utf8');
+
+    console.log('Passwords exported to:', exportPath);
+    mainWindow.webContents.send('password:export-success', {
+      path: exportPath,
+      count: passwordStore.length
+    });
+  } catch (error) {
+    console.error('Export error:', error);
+    mainWindow.webContents.send('password:export-error', 'Failed to export passwords');
   }
 })
 

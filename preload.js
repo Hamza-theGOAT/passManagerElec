@@ -9,7 +9,8 @@ contextBridge.exposeInMainWorld('api', {
   checkSetup: () => ipcRenderer.send('auth:check-setup'),
   logout: () => ipcRenderer.send('auth:logout'),
   changePassword: (oldPassword, newPassword) => ipcRenderer.send('auth:change-password', { oldPassword, newPassword }),
-  
+  exportPasswords: () => ipcRenderer.send('password:export'),
+
   onLoginSuccess: (callback) => ipcRenderer.on('auth:login-success', callback),
   onLoginError: (callback) => ipcRenderer.on('auth:login-error', (event, error) => callback(error)),
   onSetupSuccess: (callback) => ipcRenderer.on('auth:setup-success', callback),
@@ -18,6 +19,9 @@ contextBridge.exposeInMainWorld('api', {
   onChangePasswordSuccess: (callback) => ipcRenderer.on('auth:change-password-success', callback),
   onChangePasswordError: (callback) => ipcRenderer.on('auth:change-password-error', (event, error) => callback(error)),
   onShowChangePassword: (callback) => ipcRenderer.on('show-change-password', callback),
+  onExportPasswords: (callback) => ipcRenderer.on('export-passwords', callback),
+  onExportSuccess: (callback) => ipcRenderer.on('password:export-success', (event, data) => callback(data)),
+  onExportError: (callback) => ipcRenderer.on('password:export-error', (event, error) => callback(error)),
   
   // Password CRUD operations
   addPassword: (passwordData) => ipcRenderer.send('password:add', passwordData),
