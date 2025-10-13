@@ -399,7 +399,18 @@ function PasswordItem({ password, onEdit, onDelete }) {
         )}
         {showPassword && (
           <div className="revealed-password">
-            <strong>Password:</strong> {revealedPassword}
+            <div className="revealed-password-content">
+              <strong>Password:</strong>
+              <span className="password-text">{revealedPassword}</span>
+            </div>
+            <button
+              className="btn-copy"
+              onClick={() => {
+                navigator.clipboard.writeText(revealedPassword);
+              }}
+            >
+              📋
+            </button>
           </div>
         )}
       </div>
