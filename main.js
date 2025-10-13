@@ -200,7 +200,7 @@ const menu = [
       { type: 'separator' },
       {
         label: 'Export Passwords',
-        onclick: () => {
+        click: () => {
           mainWindow.webContents.send('export-passwords');
         }
       },
@@ -348,7 +348,7 @@ ipcMain.on('auth:change-password', async (e, { oldPassword, newPassword }) => {
 
 // Handle password export
 ipcMain.on('password:export', async (e) => {
-  console.log('Export passwords request');
+  console.log('Export passwords request received');
 
   try {
     const exportsDir = path.join(__dirname, 'assets', 'exports');

@@ -110,6 +110,9 @@ function Dashboard({ onLogout }) {
   const [editingPassword, setEditingPassword] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showExportWarning, setShowExportWarning] = useState(false);
+  const [showExportSuccess, setShowExportSuccess] = useState(false);
+  const [exportData, setExportData] = useState(null);
 
   useEffect(() => {
     // Load passwords on mount
@@ -143,6 +146,24 @@ function Dashboard({ onLogout }) {
       setShowChangePassword(true);
     });
 
+    // Listen for export password request from menu
+    window.api.onExportPasswords(() => {
+      setShowExportWarning(true);
+    });
+
+    // Listen for export success
+    window.api.onExportSuccess((data) => {
+      setExportData(data);
+      setShowExportWarning(false);
+      setShowExportSuccess(true);
+    });
+
+    // Listen for export error
+    window.api.onExportError((errorMsg) => {
+      alert("Export failed: " + errorMsg);
+      setShowExportWarning(false);
+    });
+
     // Cleanup
     return () => {
       window.api.removeListener("password:list");
@@ -150,6 +171,9 @@ function Dashboard({ onLogout }) {
       window.api.removeListener("password:updated");
       window.api.removeListener("password:deleted");
       window.api.removeListener("show-change-password");
+      window.api.removeListener("export-passwords");
+      window.api.removeListener("password:export-success");
+      window.api.removeListener("password:export-error");
     };
   }, []);
 
@@ -203,6 +227,26 @@ function Dashboard({ onLogout }) {
       {showChangePassword && (
         <ChangeMasterPasswordModal
           onClose={() => setShowChangePassword(false)}
+        />
+      )}
+
+      {showExportWarning && (
+        <ExportPasswordsModal
+          onClose={() => setShowExportWarning(false)}
+          onConfirm={() => {
+            window.api.exportPasswords();
+          }}
+        />
+      )}
+
+      {showExportSuccess && exportData && (
+        <ExportSuccessModal
+          onClose={() => {
+            setShowExportSuccess(false);
+            setExportData(null);
+          }}
+          exportPath={exportData.path}
+          count={exportData.count}
         />
       )}
 
@@ -572,6 +616,72 @@ function ChangeMasterPasswordModal({ onClose }) {
             </div>
           </form>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Export Passwords Modal
+function ExportPasswordsModal({ onClose, onConfirm }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h2>Export Passwords</h2>
+
+        <div className="warning-box">
+          <strong>⚠️ Security Warning</strong>
+          <p>
+            This will export all your passwords to an{" "}
+            <strong>unencrypted</strong> JSON file.
+          </p>
+          <p>Anyone with access to this file can read your passwords.</p>
+          <p>Make sure to:</p>
+          <ul>
+            <li>Store the file securely</li>
+            <li>Delete it after use</li>
+            <li>Never share it with anyone</li>
+          </ul>
+          <p style={{ marginTop: "1rem", color: "#666" }}>
+            File will be saved to: <code>assets/exports/passKeys.json</code>
+          </p>
+
+          <div className="form-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="button" className="btn-primary" onClick={onConfirm}>
+              Export Anyway
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Export Success Modal
+function ExportSuccessModal({ onClose, exportPath, count }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h2>Export Successful</h2>
+
+        <div className="success-message">
+          ✓ Successfully exported {count} password{count !== 1 ? "s" : ""}
+        </div>
+
+        <p style={{ marginTop: "1rem", color: "#666" }}>
+          Saved to: <br />
+          <code style={{ fontSize: "0.85rem", wordBreak: "break-all" }}>
+            {exportPath}
+          </code>
+        </p>
+
+        <div className="form-actions">
+          <button type="button" className="btn-primary" onClick={onClose}>
+            OK
+          </button>
+        </div>
       </div>
     </div>
   );
