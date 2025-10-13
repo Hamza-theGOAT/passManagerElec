@@ -205,6 +205,13 @@ const menu = [
         }
       },
       { type: 'separator' },
+      {
+        label: 'Delete All Entries',
+        click: () => {
+          mainWindow.webContents.send('delete-all-passwords');
+        }
+      },
+      { type: 'separator' },
       { role: 'quit' }
     ]
   },
@@ -508,6 +515,25 @@ ipcMain.on('password:reveal', (e, passwordId) => {
   }
 });
 
+// Handle delete all passwords
+ipcMain.on('password:delete-all', async (e) => {
+  console.log('Delete all passwords request');
+
+  try {
+    // Clear the password store
+    passwordStore = [];
+
+    // Save empty array to encrypted file
+    await savePasswords(passwordStore, currentMasterPassword);
+
+    console.log('All passwords deleted successfully');
+    mainWindow.webContents.send('password:delete-all-success');
+  } catch (error) {
+    console.error('Delete all error:', error);
+    mainWindow.webContents.send('password:delete-all-error', 'Failed to delete passwords');
+  }
+})
+
 // Quit when all windows are closed
 app.on('window-all-closed', () => {
   if (!isMac) app.quit();
@@ -517,3 +543,8 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
 });
+
+// Suppress GPU warnings
+process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-software-resterizer');
