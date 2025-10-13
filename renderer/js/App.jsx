@@ -369,7 +369,7 @@ function PasswordItem({ password, onEdit, onDelete }) {
     window.api.onPasswordRevealed(handlePasswordRevealed);
 
     return () => {
-      window.api.removeListener("password:revealed");
+      // window.api.removeListener("password:revealed");
     };
   }, [password.id]);
 
