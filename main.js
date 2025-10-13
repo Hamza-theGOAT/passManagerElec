@@ -128,7 +128,7 @@ function createMainWindow() {
 
   // Show devtools automatically if in development
   if (isDev) {
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools();
   }
 
   // Load single HTML file - React will handle routing
@@ -414,7 +414,7 @@ ipcMain.on('password:add', async (e, passwordData) => {
 ipcMain.on('password:get-all', (e) => {
   // TODO: Decrypt and retrieve all passwords
   console.log('Get all passwords. Count:', passwordStore.length);
-  console.log('PasswordStore contents:', JSON.stringify(passwordStore, null, 2));
+  // console.log('PasswordStore contents:', JSON.stringify(passwordStore, null, 2));
 
   // Returna all passwords (with actual passwords masked)
   const maskedPasswords = passwordStore.map(pwd => ({
@@ -422,7 +422,7 @@ ipcMain.on('password:get-all', (e) => {
     password: '••••••••'
   }));
   
-  console.log('PasswordStore contents:', JSON.stringify(maskedPasswords, null, 2));
+  // console.log('PasswordStore contents:', JSON.stringify(maskedPasswords, null, 2));
   mainWindow.webContents.send('password:list', maskedPasswords);
 });
 
@@ -502,7 +502,7 @@ ipcMain.on('password:reveal', (e, passwordId) => {
       password: password.password
     });
     
-    console.log('Sent password:revealed event with:', password.password);
+    // console.log('Sent password:revealed event with:', password.password);
   } else {
     console.log('Password not found');
   }
