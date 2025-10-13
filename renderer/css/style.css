@@ -217,6 +217,61 @@ code {
   font-size: 0.85rem;
 }
 
+/* Danger button */
+.btn-danger {
+  padding: 0.875rem 1.5rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.btn-danger:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Danger box */
+.danger-box {
+  background: #fee;
+  border: 2px solid #dc3545;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.danger-box strong {
+  color: #c82333;
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.danger-box p {
+  color: #721c24;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.danger-box ul {
+  margin: 0.5rem 0 0 1.5rem;
+  color: #721c24;
+}
+
+.danger-box ul li {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
 /* Dashboard */
 .dashboard {
   background: white;
