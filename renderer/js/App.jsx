@@ -1,3 +1,5 @@
+import { stat } from "original-fs";
+
 const { useState, useEffect } = React;
 
 // Login Component
@@ -114,6 +116,9 @@ function Dashboard({ onLogout }) {
   const [showExportSuccess, setShowExportSuccess] = useState(false);
   const [exportData, setExportData] = useState(null);
   const [showDeleteAllWarning, setShowDeleteAllWarning] = useState(false);
+  const [showImportWarning, setShowImportWarning] = useState(false);
+  const [showImportSuccess, setShowImportSuccess] = useState(false);
+  const [importStats, setImportStats] = useState(null);
 
   useEffect(() => {
     // Load passwords on mount
@@ -165,6 +170,25 @@ function Dashboard({ onLogout }) {
       setShowExportWarning(false);
     });
 
+    // Listen for import password request from menu
+    window.api.onImportPasswords(() => {
+      setShowExportWarning(true);
+    });
+
+    // Listen for import success
+    window.api.onImportSuccess((stats) => {
+      window.api.getAllPasswords();
+      setImportStats(stats);
+      setShowImportWarning(false);
+      setShowImportSuccess(true);
+    });
+
+    // Listen for import error
+    window.api.onImportError((errorMsg) => {
+      alert("Import failed: " + errorMsg);
+      setShowImportWarning(false);
+    });
+
     // Listen for delete all password request from menu
     window.api.onDeleteAllPasswords(() => {
       setShowDeleteAllWarning(true);
@@ -193,6 +217,9 @@ function Dashboard({ onLogout }) {
       window.api.removeListener("export-passwords");
       window.api.removeListener("password:export-success");
       window.api.removeListener("password:export-error");
+      window.api.removeListener("import-passwords");
+      window.api.removeListener("password:import-success");
+      window.api.removeListener("password:import-error");
       window.api.removeListener("delete-all-passwords");
       window.api.removeListener("password:delete-all-success");
       window.api.removeListener("password:delete-all-error");
@@ -269,6 +296,25 @@ function Dashboard({ onLogout }) {
           }}
           exportPath={exportData.path}
           count={exportData.count}
+        />
+      )}
+
+      {showImportWarning && (
+        <ImportPasswordsModal
+          onClose={() => setShowImportWarning(false)}
+          onConfirm={() => {
+            window.api.importPasswords();
+          }}
+        />
+      )}
+
+      {showImportSuccess && importStats && (
+        <ImportSuccessModal
+          onClose={() => {
+            setShowExportSuccess(false);
+            setImportStats(null);
+          }}
+          stats={importStats}
         />
       )}
 
@@ -778,6 +824,95 @@ function DeleteAllPasswordsModal({ onClose, onConfirm }) {
           >
             {isDeleting ? "Deleting..." : "Delete All Passwords"}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Import Passwords Modal
+function ImportPasswordsModal({ onClose, onConfirm }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h2>Import Passwords</h2>
+        <div className="info-box-blue">
+          <strong>📥 Import Information</strong>
+          <p>This will import passwords from:</p>
+          <code>assets/imports/passKeys.json</code>
+          <p style={{ marginTop: "1rem" }}>Import behavior</p>
+          <ul>
+            <li>
+              <strong>Matching entries</strong> (same ID or username+title) will
+              be <strong>updated</strong>
+            </li>
+            <li>
+              <strong>New entries</strong> will be <strong>added</strong> to
+              your vault
+            </li>
+            <li>Invalid entries will be skipped</li>
+          </ul>
+          <p style={{ marginTop: "1rem", fontSize: "0.85rem", color: "#666" }}>
+            <strong>Required format:</strong>
+          </p>
+          <pre>
+            {`{
+              "passwords": [
+                {
+                  "title": "Example",
+                  "username": "user@gmail.com",
+                  "password": "pass123",
+                  "url": "https://example.com"
+                },
+              ]
+            }`}
+          </pre>
+        </div>
+
+        <div className="form-actions">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn-primary" onClick={onConfirm}>
+            Import
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Import Success Modal
+function ImportSuccessModal({ onClose, stats }) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <h2>Import Complete</h2>
+
+        <div className="success-message">
+          ✓ Successfully processed {stats.total} password
+          {stats.total !== 1 ? "s" : ""}
+        </div>
+
+        <div className="import-stats">
+          <div className="stat-item">
+            <span className="stat-label">Added:</span>
+            <span className="stat-value">{stats.added}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Updated:</span>
+            <span className="stat-value">{stats.updated}</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Skipped:</span>
+            <span className="stat-value">{stats.skipped}</span>
+          </div>
+
+          <div className="form-actions">
+            <button type="button" className="btn-primary" onClick={onClose}>
+              OK
+            </button>
+          </div>
         </div>
       </div>
     </div>
