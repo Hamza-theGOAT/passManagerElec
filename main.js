@@ -206,6 +206,13 @@ const menu = [
       },
       { type: 'separator' },
       {
+        label: 'Import Passwords',
+        click: () => {
+          mainWindow.webContents.send('import-passwords');
+        }
+      },
+      { type: 'separator' },
+      {
         label: 'Delete All Entries',
         click: () => {
           mainWindow.webContents.send('delete-all-passwords');
@@ -382,6 +389,91 @@ ipcMain.on('password:export', async (e) => {
     mainWindow.webContents.send('password:export-error', 'Failed to export passwords');
   }
 })
+
+// Handle password import
+ipcMain.on('password:import', async (e) => {
+  console.log('Import passwords request');
+
+  try {
+    const importPath = path.join(__dirname, 'assets', 'imports', 'passKeys.json');
+
+    // read the import file
+    const importData = await fs.readFile(importPath, 'utf8');
+    const parseData = JSON.parse(importData);
+
+    console.log('Parsed import data:', parseData);
+
+    // Validate the data structure
+    if (!parseData.passwords || !Array(parseData.passwords)) {
+      console.log('Invalid import file structure');
+      mainWindow.webContents.send('password:import-error', 'Invalid file format: missing passwords array');
+      return;
+    }
+
+    const importedPasswords = parseData.passwords;
+    console.log('Found passwords to import:', importedPasswords.length);
+
+    let addedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    // Merge logic
+    for (const importedPwd of importedPasswords) {
+      // Skip if missing required fields
+      if (!importedPwd.title || !importedPwd.username || !importedPwd.password) {
+        console.log('Skipping invalid entry:', importedPwd);
+        skippedCount++;
+        continue;
+      }
+
+      // Find matching entry by ID or username
+      const existingIndex = passwordStore.findIndex(
+        p => p.id === importedPwd.id ||
+        (p.username === importedPwd.username && p.title === importedPwd.title)
+      );
+
+      if (existingIndex !== -1) {
+        // Update existing entry
+        console.log('Updating existing password:', importedPwd.title);
+        passwordStore[existingIndex] = {
+          ...passwordStore[existingIndex],
+          ...importedPwd,
+          id: passwordStore[existingIndex].id,
+          createdAt: passwordStore[existingIndex].createdAt,
+          updatedAt: new Date().toISOString()
+        };
+        updatedCount++;
+      } else {
+        // Add new entry
+        console.log('Adding new password:', importedPwd.title);
+        const newPassword = {
+          ...importedPwd,
+          id: importedPwd.id || Date.now() + Math.random(),
+          createdAt: importedPwd.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        passwordStore.push(newPassword);
+        addedCount++;
+      }
+    }
+
+    // Save to encrypted file 
+    await savePasswords(passwordStore, currentMasterPassword);
+
+    console.log(`Import complete: ${addedCount} added, ${updatedCount} updated, ${skippedCount} skipped`);
+    
+    mainWindow.webContents.send('password:import-success', {
+      added: addedCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      total: importedPasswords.length
+    });
+  } catch (error) {
+    console.error('Import error:', error);
+    mainWindow.webContents.send('password:import-error', 'Failed to import passwords: ' + error.message);
+  }
+});
 
 // Handle logout
 ipcMain.on('auth:logout', () => {

@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('api', {
   deletePassword: (passwordId) => ipcRenderer.send('password:delete', passwordId),
   revealPassword: (passwordId) => ipcRenderer.send('password:reveal', passwordId),
   exportPasswords: () => ipcRenderer.send('password:export'),
+  importPasswords: () => ipcRenderer.send('password:import'),
   deleteAllPasswords: () => ipcRenderer.send('password:delete-all'),
   
   // Listen for password operations responses
@@ -37,6 +38,9 @@ contextBridge.exposeInMainWorld('api', {
   onExportPasswords: (callback) => ipcRenderer.on('export-passwords', callback),
   onExportSuccess: (callback) => ipcRenderer.on('password:export-success', (event, data) => callback(data)),
   onExportError: (callback) => ipcRenderer.on('password:export-error', (event, error) => callback(error)),
+  onImportPasswords: (callback) => ipcRenderer.on('import-passwords', callback),
+  onImportSuccess: (callback) => ipcRenderer.on('password:import-success', (event, data) => callback(data)),
+  onImportError: (callback) => ipcRenderer.on('password:import-error', (event, error) => callback(error)),
   onDeleteAllPasswords: (callback) => ipcRenderer.on('delete-all-passwords', callback),
   onDeleteAllSuccess: (callback) => ipcRenderer.on('password:delete-all-success', callback),
   onDeleteAllError: (callback) => ipcRenderer.on('password:delete-all-error', (event, error) => callback(error)),
