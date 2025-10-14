@@ -1,4 +1,4 @@
-import { stat } from "original-fs";
+// import { stat } from "original-fs";
 
 const { useState, useEffect } = React;
 
@@ -115,10 +115,10 @@ function Dashboard({ onLogout }) {
   const [showExportWarning, setShowExportWarning] = useState(false);
   const [showExportSuccess, setShowExportSuccess] = useState(false);
   const [exportData, setExportData] = useState(null);
-  const [showDeleteAllWarning, setShowDeleteAllWarning] = useState(false);
   const [showImportWarning, setShowImportWarning] = useState(false);
   const [showImportSuccess, setShowImportSuccess] = useState(false);
   const [importStats, setImportStats] = useState(null);
+  const [showDeleteAllWarning, setShowDeleteAllWarning] = useState(false);
 
   useEffect(() => {
     // Load passwords on mount
@@ -172,7 +172,7 @@ function Dashboard({ onLogout }) {
 
     // Listen for import password request from menu
     window.api.onImportPasswords(() => {
-      setShowExportWarning(true);
+      setShowImportWarning(true);
     });
 
     // Listen for import success
@@ -856,7 +856,8 @@ function ImportPasswordsModal({ onClose, onConfirm }) {
             <strong>Required format:</strong>
           </p>
           <pre>
-            {`{
+            {`
+            {
               "passwords": [
                 {
                   "title": "Example",
@@ -865,7 +866,8 @@ function ImportPasswordsModal({ onClose, onConfirm }) {
                   "url": "https://example.com"
                 },
               ]
-            }`}
+            }
+            `}
           </pre>
         </div>
 
