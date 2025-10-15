@@ -834,7 +834,10 @@ function DeleteAllPasswordsModal({ onClose, onConfirm }) {
 function ImportPasswordsModal({ onClose, onConfirm }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content modal-content-large"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h2>Import Passwords</h2>
         <div className="info-box-blue">
           <strong>📥 Import Information</strong>

@@ -116,7 +116,7 @@ async function savePasswords(passwords, masterPassword) {
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: isDev ? 1200 : 600,
-    height: 700,
+    height: 900,
     icon: `${__dirname}/renderer/assets/icons/unlocked.png`,
     resizable: isDev,
     webPreferences: {
@@ -128,7 +128,7 @@ function createMainWindow() {
 
   // Show devtools automatically if in development
   if (isDev) {
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools();
   }
 
   // Load single HTML file - React will handle routing
